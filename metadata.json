@@ -1,0 +1,7 @@
+{
+  "name": "Golf Swing Metronome",
+  "description": "An application to help golfers improve their swing rhythm by providing a metronome with tempos optimized for different club types. You can play the sound directly or download it for offline practice.",
+  "requestFramePermissions": [
+    "microphone"
+  ]
+}
