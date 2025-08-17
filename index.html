@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Golf Swing Metronome</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="importmap">
+{
+  "imports": {
+    "react-dom/": "https://esm.sh/react-dom@^19.1.1/",
+    "react/": "https://esm.sh/react@^19.1.1/",
+    "react": "https://esm.sh/react@^19.1.1",
+    "@google/genai": "https://esm.sh/@google/genai@^1.13.0"
+  }
+}
+</script>
+    <style>
+      .tempo-slider::-webkit-slider-runnable-track {
+        background: transparent;
+        height: 100%;
+      }
+      .tempo-slider::-moz-range-track {
+        background: transparent;
+        height: 100%;
+      }
+      .tempo-slider::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        appearance: none;
+        margin-top: -10px; /* Center thumb vertically */
+        height: 32px;
+        width: 32px;
+        background-color: #f0fdf4; /* green-50 */
+        border-radius: 50%;
+        border: 4px solid #22c55e; /* green-500 */
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        transition: transform 0.1s ease-in-out;
+      }
+      .tempo-slider:active::-webkit-slider-thumb {
+        transform: scale(1.1);
+      }
+      .tempo-slider::-moz-range-thumb {
+        height: 24px;
+        width: 24px;
+        background-color: #f0fdf4;
+        border-radius: 50%;
+        border: 4px solid #22c55e;
+        box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+        transition: transform 0.1s ease-in-out;
+        border: none; /* Reset border for Firefox */
+      }
+      .tempo-slider:active::-moz-range-thumb {
+        transform: scale(1.1);
+      }
+    </style>
+  <link rel="stylesheet" href="/index.css">
+</head>
+  <body class="bg-gray-900">
+    <div id="root"></div>
+    <script type="module" src="/index.tsx"></script>
+  </body>
+</html>
