@@ -6,6 +6,7 @@ import { generateWavBlob } from './services/audioService';
 import ClubSelector from './components/ClubSelector';
 import TempoSlider from './components/TempoSlider';
 import Controls from './components/Controls';
+import PercentageSelector from './components/PercentageSelector';
 import { GolfBallIcon } from './components/icons';
 import Navigation from './components/Navigation';
 import Scorecard from './components/Scorecard';
@@ -23,25 +24,54 @@ const MetronomeView: React.FC = () => {
       () => CLUB_TEMPO_CONFIGS.find(club => club.id === selectedClubId)!,
       [selectedClubId]
     );
+
+    const [tempoScale, setTempoScale] = useState<number>(1.0);
+    const [clubBpms, setClubBpms] = useState<Record<string, number>>(() => {
+      const initialBpms: Record<string, number> = {};
+      CLUB_TEMPO_CONFIGS.forEach(club => {
+        initialBpms[club.id] = club.default;
+      });
+      return initialBpms;
+    });
+
+    const bpm = useMemo(() => {
+      return Math.round(clubBpms[selectedClubId] * tempoScale);
+    }, [clubBpms, selectedClubId, tempoScale]);
   
-    const [bpm, setBpm] = useState<number>(selectedClubConfig.default);
     const [isPlaying, setIsPlaying] = useState<boolean>(false);
     const [isDownloading, setIsDownloading] = useState<boolean>(false);
   
     useMetronome(bpm, isPlaying);
     
     const handleClubChange = useCallback((clubId: string) => {
-      const newClubConfig = CLUB_TEMPO_CONFIGS.find(club => club.id === clubId)!;
       setSelectedClubId(clubId);
-      setBpm(newClubConfig.default);
       if (isPlaying) {
         setIsPlaying(false);
       }
     }, [isPlaying]);
   
     const handleBpmChange = useCallback((event: React.ChangeEvent<HTMLInputElement>) => {
-      setBpm(Number(event.target.value));
-    }, []);
+      const newBpm = Number(event.target.value);
+      setClubBpms(prev => ({
+        ...prev,
+        [selectedClubId]: newBpm / tempoScale,
+      }));
+    }, [selectedClubId, tempoScale]);
+
+    const handleTempoScaleChange = useCallback((newScale: number) => {
+      setTempoScale(newScale);
+
+      // Reset all clubs to their default BPM when scale changes
+      const newBpms: Record<string, number> = {};
+      CLUB_TEMPO_CONFIGS.forEach(club => {
+        newBpms[club.id] = club.default;
+      });
+      setClubBpms(newBpms);
+
+      if (isPlaying) {
+        setIsPlaying(false);
+      }
+    }, [isPlaying]);
   
     const handlePlayPause = useCallback(() => {
       setIsPlaying(prev => !prev);
@@ -86,15 +116,19 @@ const MetronomeView: React.FC = () => {
               />
     
               <div className="text-center space-y-4">
+                <PercentageSelector
+                  selectedScale={tempoScale}
+                  onScaleChange={handleTempoScaleChange}
+                />
                 <div className="text-7xl lg:text-8xl font-bold text-green-400 tracking-tighter tabular-nums">
                   {bpm}
                 </div>
                 <TempoSlider
-                  min={selectedClubConfig.range.min}
-                  max={selectedClubConfig.range.max}
+                  min={Math.round(selectedClubConfig.range.min * tempoScale)}
+                  max={Math.round(selectedClubConfig.range.max * tempoScale)}
                   value={bpm}
-                  optimalStart={selectedClubConfig.optimalRange.start}
-                  optimalEnd={selectedClubConfig.optimalRange.end}
+                  optimalStart={Math.round(selectedClubConfig.optimalRange.start * tempoScale)}
+                  optimalEnd={Math.round(selectedClubConfig.optimalRange.end * tempoScale)}
                   onChange={handleBpmChange}
                 />
               </div>
