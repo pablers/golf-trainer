@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id        String      @id @default(cuid())
+  email     String      @unique
+  name      String?
+  scorecards Scorecard[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+}
+
+model GolfCourse {
+  id           String      @id @default(cuid())
+  name         String
+  address      String?
+  municipality String?
+  province     String?
+  region       String?
+  phone        String?
+  email        String?
+  url          String?
+  latitude     String?
+  longitude    String?
+  scorecards   Scorecard[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model Scorecard {
+  id               String             @id @default(cuid())
+  user             User               @relation(fields: [userId], references: [id])
+  userId           String
+  golfCourse       GolfCourse         @relation(fields: [golfCourseId], references: [id])
+  golfCourseId     String
+  roundType        String
+  weather          String
+  wind             String
+  playedAt         DateTime           @default(now())
+  holeScores       HoleScore[]
+  postRoundAnswers PostRoundAnswers?
+  createdAt        DateTime           @default(now())
+  updatedAt        DateTime           @updatedAt
+}
+
+model HoleScore {
+  id          String    @id @default(cuid())
+  scorecard   Scorecard @relation(fields: [scorecardId], references: [id])
+  scorecardId String
+  hole        Int
+  par         Int
+  strokeIndex Int
+  strokes     Int?
+  putts       Int?
+  comment     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+}
+
+model PostRoundAnswers {
+  id                  String   @id @default(cuid())
+  scorecard           Scorecard @relation(fields: [scorecardId], references: [id])
+  scorecardId         String   @unique
+  weather_h7_confirm  String?
+  weather_h7_new      String?
+  wind_h7_change      String?
+  weather_h15_confirm String?
+  weather_h15_new     String?
+  wind_h15_change     String?
+  turf_condition      String?
+  green_speed         String?
+  physical_state      String?
+  mental_state        String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+}

@@ -1,6 +1,6 @@
-import React, { useState, useCallback, useMemo } from 'react';
-import { CLUB_TEMPO_CONFIGS, GOLF_COURSES, INITIAL_HOLE_SCORES } from './constants';
-import type { ClubTempoConfig, ScorecardSessionSetup, GolfCourse, RoundType, WeatherCondition, WindCondition } from './types';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { CLUB_TEMPO_CONFIGS, INITIAL_HOLE_SCORES } from './constants';
+import type { ClubTempoConfig, ScorecardSessionSetup, GolfCourse, RoundType, WeatherCondition, WindCondition, Scorecard as ScorecardType } from './types';
 import { useMetronome } from './hooks/useMetronome';
 import { generateWavBlob } from './services/audioService';
 import ClubSelector from './components/ClubSelector';
@@ -14,7 +14,9 @@ import ConditionsSetup from './components/ConditionsSetup';
 
 type View = 'metronome' | 'scorecard';
 type ScorecardStep = 'setup' | 'conditions' | 'playing';
-const SESSION_STORAGE_KEY = 'golf-session-data';
+
+// Hardcoded user ID for now. In a real app, this would come from an auth system.
+const FAKE_USER_ID = 'clxsm5n8g000008l3g6g2h3f2'; // This should match a user in your seed data
 
 const MetronomeView: React.FC = () => {
     const [selectedClubId, setSelectedClubId] = useState<string>(CLUB_TEMPO_CONFIGS[2].id); // Default to Mid Iron
@@ -116,12 +118,32 @@ export default function App(): React.ReactNode {
   const [activeView, setActiveView] = useState<View>('metronome');
   const [scorecardStep, setScorecardStep] = useState<ScorecardStep>('setup');
   const [sessionSetup, setSessionSetup] = useState<Partial<ScorecardSessionSetup>>({});
+  const [courses, setCourses] = useState<GolfCourse[]>([]);
+  const [currentScorecard, setCurrentScorecard] = useState<ScorecardType | null>(null);
+
+  // Fetch golf courses when the app loads
+  useEffect(() => {
+    async function fetchCourses() {
+      try {
+        const response = await fetch('http://localhost:3001/api/courses');
+        if (!response.ok) {
+          throw new Error('Failed to fetch courses');
+        }
+        const data = await response.json();
+        setCourses(data);
+      } catch (error) {
+        console.error(error);
+        // In a real app, you'd want to show an error to the user
+      }
+    }
+    fetchCourses();
+  }, []);
 
   const handleViewChange = (view: View) => {
     if (view !== 'scorecard' && activeView === 'scorecard') {
-      // Optionally reset the flow when navigating away from the scorecard section
       setScorecardStep('setup');
       setSessionSetup({});
+      setCurrentScorecard(null);
     }
     setActiveView(view);
   };
@@ -131,12 +153,41 @@ export default function App(): React.ReactNode {
     setScorecardStep('conditions');
   };
 
-  const handleConditionsStart = (weather: WeatherCondition, wind: WindCondition) => {
-    // Starting a new round, clear previous saved data to ensure a fresh card
-    localStorage.removeItem(SESSION_STORAGE_KEY);
-    
-    setSessionSetup(prev => ({ ...prev, weather, wind }));
-    setScorecardStep('playing');
+  const handleConditionsStart = async (weather: WeatherCondition, wind: WindCondition) => {
+    const finalSetup = { ...sessionSetup, weather, wind };
+    setSessionSetup(finalSetup);
+
+    // Create the payload for the new scorecard
+    const newScorecardPayload = {
+      userId: FAKE_USER_ID,
+      golfCourseId: finalSetup.course!.id,
+      roundType: finalSetup.roundType,
+      weather: finalSetup.weather,
+      wind: finalSetup.wind,
+      holeScores: INITIAL_HOLE_SCORES.map(hole => ({ ...hole, strokes: 0, putts: 0, comment: '' })), // Initialize with some defaults
+    };
+
+    try {
+      const response = await fetch('http://localhost:3001/api/scorecards', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(newScorecardPayload),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create scorecard');
+      }
+
+      const createdScorecard = await response.json();
+      setCurrentScorecard(createdScorecard);
+      setScorecardStep('playing');
+
+    } catch (error) {
+      console.error(error);
+      // Show an error message to the user
+    }
   };
 
   const handleConditionsBack = () => {
@@ -146,19 +197,21 @@ export default function App(): React.ReactNode {
   const renderScorecardView = () => {
     switch (scorecardStep) {
       case 'setup':
-        return <ScorecardSetup onContinue={handleSetupContinue} />;
+        // Pass the fetched courses to the ScorecardSetup component
+        return <ScorecardSetup onContinue={handleSetupContinue} courses={courses} />;
       case 'conditions':
         return <ConditionsSetup onStart={handleConditionsStart} onBack={handleConditionsBack} />;
       case 'playing':
-        if (sessionSetup.course && sessionSetup.roundType) {
-          return <Scorecard setup={sessionSetup as ScorecardSessionSetup} />;
+        // The Scorecard component now receives the full scorecard object
+        if (currentScorecard) {
+          return <Scorecard scorecard={currentScorecard} />;
         }
-        // Fallback to setup if session data is missing for some reason
+        // Fallback to setup if scorecard data is missing
         setScorecardStep('setup');
-        return <ScorecardSetup onContinue={handleSetupContinue} />;
+        return <ScorecardSetup onContinue={handleSetupContinue} courses={courses} />;
       default:
         setScorecardStep('setup');
-        return <ScorecardSetup onContinue={handleSetupContinue} />;
+        return <ScorecardSetup onContinue={handleSetupContinue} courses={courses} />;
     }
   }
 
